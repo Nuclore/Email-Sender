@@ -1,10 +1,10 @@
 from email.message import EmailMessage # For constructing the email messages.
 import smtplib # For sending the email messages through an SMTP server.
-import os # For interacting with the operating system e.g. checking if a file or directory exists, listing files in a directory etc.
-import mimetypes # For determining the type and extension of a file.
+import os # For interacting with the operating system e.g. checking if a file or directory exist, listing files in a directory etc.
+import mimetypes # For determining the type and extension of a file, which is used for adding attachments.
 from getpass import getpass # For hiding the password when the user types it in.
 import sys # For exiting the program.
-import socket # For establishing socket connections.
+import socket # For raising an exception when if the device is not connected to the internet.
 import re # For searching a string, using a regular expression pattern.
 
 class Emails:
@@ -41,24 +41,20 @@ class Emails:
                 for message in self.messages: # Loops through each recipient message.   
                     for file in files: # Loops through each file in the attachment directory.
 
-                        # Joins the attachment directory name and the filename to create a relative path.
+                        # Joins the attachment directory and the filename to create a relative path.
                         attachment_path = os.path.join(self.attachments_directory, file) 
                         mime_type, _ = mimetypes.guess_type(attachment_path) # Guesses the file type with extension e.g. image/png
                         mime_type, mime_subtype = mime_type.split('/', 1) # Separates the file type and extension.
 
-                        try:
-                            with open(attachment_path, 'rb') as f: # Opens the file in read-binary mode, since the file may not be a text file.
-                                # Attaches the file to the message.
-                                message.add_attachment(f.read(), maintype=mime_type, subtype=mime_subtype, filename=file)                                     
-                        except FileNotFoundError:
-                            # Displays an error if the file does not exist.
-                            print(f'{file} does not exist in the "{self.attachments_directory}" directory.')
+                        with open(attachment_path, 'rb') as f: # Opens the file in read-binary mode.
+                            # Attaches the file to the message.
+                            message.add_attachment(f.read(), maintype=mime_type, subtype=mime_subtype, filename=file)                                                 
             else:
                 # Displays a message that there are no files in the attachments directory.
-                print(f'There are no files in the "{self.attachments_directory}" directory.\n')
+                print(f'\nThere are no files in the "{self.attachments_directory}" directory.')
         else:
             # Displays a message that the attachments directory does not exist.
-            print(f'The "{self.attachments_directory}" directory does not exist.\n')
+            print(f'\nThe "{self.attachments_directory}" directory does not exist.')
 
     def send_emails(self):
         '''Sends the email messages to the recipients.'''
@@ -74,58 +70,44 @@ class Emails:
                     try:
                         self.mail_server.send_message(message) # Sends the message to the recipient.
                         print(f'Email sent to {message["To"]}') # Displays which recipient the email is being sent to.
-
                         # After sending the email, the recipient's name and their email address is added to the list of successful recipients.
                         self.successful_recipients.append(name_email) 
-                    except smtplib.SMTPRecipientsRefused:
+                    except smtplib.SMTPException:
                         # Displays an error if the email was not sent to the recipient.
                         print(f'Unable to send email to {message["To"]}')
-
                         # If the email was NOT sent, the recipient's name and their email address is added to the list of unsuccessful recipients.
                         self.unsuccessful_recipients.append(name_email) 
-                    except smtplib.SMTPSenderRefused:
-                        # Displays an error if the sender email address is not able to send the email to the recipient.
-                        print(f'{message["From"]} refused to send the email to {message["To"]}')
 
-                        # If the sender was unable to send the email, the recipient's name and their email address is added to the list of unsuccessful recipients.
-                        self.unsuccessful_recipients.append(name_email)             
-                    except smtplib.SMTPDataError:
-                        # Displays an error if the server is unable to accept the message.
-                        print(f'The server is unable to accept the message for {message["To"]}')
-
-                        # If the server is unable to accept the email message, the recipient's name and their email address is added to the list of unsuccessful recipients.
-                        self.unsuccessful_recipients.append(name_email) 
                 self.results() # Displays how many emails were successfully and unsuccessfully sent.
             else:
                 # Displays a message if there are no emails to send.
-                print('There are no emails to send.\n')
+                print('\nThere are no emails to send.')
 
             self.mail_server.quit() # Closes the connection to the SMTP server.
-
         except smtplib.SMTPConnectError:
             # Displays an error if a connection was not established to the SMTP server, and then terminate the program.
-            print(f'Unable to connect to {smtp_server_address}')
+            print(f'\nUnable to connect to {self.smtp_server_address}')
             print('Please ensure that the SMTP server address is valid and working.')
-            print('Program terminated.\n')
+            print('Program terminated.')
             sys.exit() # Exits the program.
         except smtplib.SMTPServerDisconnected:
             # Displays an error if the SMTP server unexpectedly disconnects, and then terminate the program.
-            print('The SMTP server unexpectedly disconnected :(')
-            print('Program terminated.\n')
+            print('\nThe SMTP server unexpectedly disconnected :(')
+            print('Program terminated.')
             sys.exit() # Exits the program.
         except socket.gaierror:
-            # Displays an error if the SMTP Server Address is invalid, and then terminate the program.
-            print(f'{self.smtp_server_address} is an invalid SMTP Server Address.')
-            print('Program terminated.\n')
+            # Displays an error if you are not connected to the internet, and then terminate the program.
+            print(f'\nYou are not connected to the internet.')
+            print('Program terminated.')
             sys.exit() # Exits the program.
         except TimeoutError:
-            # Displays an error if it is taking to long to connect to the SMTP server address, and then terminate the program.
-            print(f'Connection timed out for {self.smtp_server_address}')
-            print('Program terminated.\n')
+            # Displays an error if it is taking to long to connect to the SMTP server, and then terminate the program.
+            print(f'\nConnection timed out for {self.smtp_server_address}')
+            print('Program terminated.')
             sys.exit() # Exit the program.
 
     def authenticate_server(self):
-        '''Gets the password for the sender's email address, and authenticates to the server.'''
+        '''Gets the password for the sender's email address, and authenticate to the server.'''
         attempts = 3 # Number of attempts for entering the password for the sender's email address.
 
         # Displays a message to the user stating the number of attempts allowed for entering the sender email address password,
@@ -133,16 +115,15 @@ class Emails:
         print(f'\nYou have {attempts} attempts to enter the password for {self.sender} before the program terminates.\n')
 
         while attempts > 0: # Checks if there are any attempts left.
-            password = getpass(f'Enter password for {self.sender}: ') # Prompts the user for the password.
+            password = getpass(f'Enter password for {self.sender}: ') # Prompts the user for the password. The password will be hidden while the user types it in.
             try:
-                self.mail_server.login(self.sender, password) # Authenticates with the mail server.
-                # Prints a message stating that the authentication was successful.
+                self.mail_server.login(self.sender, password) # Authenticates to the SMTP server.
+                # Prints a message stating that authentication was successful.
                 print(f'Successfully logged into {self.sender}\n') 
                 break
             except smtplib.SMTPAuthenticationError:
                 # Displays an error if the password for the sender's email address was incorrect.
                 attempts -= 1 # Decrements the number of attempts by 1.
-
                 # Displays a series of messages that the authentication failed, and to re-enter the password.
                 print(f'\nUnable to log into {self.sender}')
                 print('Please verify that the password is correct, and then re-enter it.')
@@ -166,17 +147,18 @@ class Emails:
 
     def get_smtp_server_address(self):
         '''Returns the SMTP Server Address for some common email domains.'''
-        if self.sender.endswith('gmail.com'): # Checks if the sender email address is a gmail address, and returns the SMTP server address for it to connect to.
+        if self.sender.endswith('gmail.com'): # Checks if the sender email address is a gmail address, and returns the SMTP server address for it.
             return 'smtp.gmail.com'
-        elif self.sender.endswith('outlook.com'): # Checks if the sender email address is an outlook address, and returns the SMTP server address for it to connect to.
+        elif self.sender.endswith('outlook.com'): # Checks if the sender email address is an outlook address, and returns the SMTP server address for it.
             return 'smtp-mail.outlook.com'
-        elif self.sender.endswith('yahoo.com'): # Checks if the sender email address is a yahoo address, and returns the SMTP server address for it to connect to.
+        elif self.sender.endswith('yahoo.com'): # Checks if the sender email address is a yahoo address, and returns the SMTP server address for it.
             return 'smtp.mail.yahoo.com'
-        elif self.sender.endswith('zohomail.com'): # Checks if the sender email address is a zoho address, and returns the SMTP server address for it to connect to.
+        elif self.sender.endswith('zohomail.com'): # Checks if the sender email address is a zoho address, and returns the SMTP server address for it.
             return 'smtp.zoho.com'
         else:
+            # If an email with a different domain is used, the SMTP server address for it would be required.
             while True:
-                smtp_server_address = input(f'\nEnter SMTP Server Address for {self.sender} to connect to: ') # Prompts the user to enter the SMTP Address for the email address, if it is not listed above.
+                smtp_server_address = input(f'\nEnter SMTP Server Address for {self.sender} to connect to: ') # Prompts the user to enter the SMTP Address for the email address.
                 if self.validate_smtp_server_address(smtp_server_address): # Checks if the SMTP Server Address is in the correct format, and returns it.
                     return smtp_server_address
                 else:
