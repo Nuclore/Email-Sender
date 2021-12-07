@@ -4,6 +4,8 @@ import os # For interacting with the operating system e.g. checking if a file or
 import mimetypes # For determining the type and extension of a file.
 from getpass import getpass # For hiding the password when the user types it in.
 import sys # For exiting the program.
+import socket # For establishing socket connections.
+import re # For searching a string, using a regular expression pattern.
 
 class Emails:
     '''Class to generate and send emails to recipients.'''
@@ -18,7 +20,7 @@ class Emails:
 
         self.attachments_directory = 'attachments' # Folder name containing the attachments.
 
-        self.smtp_server_address = 'smtp.gmail.com' # Address to Gmail SMTP server.
+        self.smtp_server_address = self.get_smtp_server_address() # Address to SMTP server.
 
     def construct_emails(self):
         '''Construct the email messages for each recipient.'''
@@ -62,6 +64,8 @@ class Emails:
         '''Sends the email messages to the recipients.'''
         try:    
             self.mail_server = smtplib.SMTP_SSL(self.smtp_server_address) # Creates a secure connection to the SMTP server.
+            print(f'\nConnection established to {self.smtp_server_address}') # Displays that a connection was established to the SMTP server.
+
             self.authenticate_server() # Authenticates to the server.
 
             if self.messages: # Checks if there are any recipients' messages.
@@ -109,6 +113,16 @@ class Emails:
             print('The SMTP server unexpectedly disconnected :(')
             print('Program terminated.\n')
             sys.exit() # Exits the program.
+        except socket.gaierror:
+            # Displays an error if the SMTP Server Address is invalid, and then terminate the program.
+            print(f'{self.smtp_server_address} is an invalid SMTP Server Address.')
+            print('Program terminated.\n')
+            sys.exit() # Exits the program.
+        except TimeoutError:
+            # Displays an error if it is taking to long to connect to the SMTP server address, and then terminate the program.
+            print(f'Connection timed out for {self.smtp_server_address}')
+            print('Program terminated.\n')
+            sys.exit() # Exit the program.
 
     def authenticate_server(self):
         '''Gets the password for the sender's email address, and authenticates to the server.'''
@@ -149,6 +163,39 @@ class Emails:
             print(f'\nEmails were NOT sent to {len(self.unsuccessful_recipients)} recipients.') # Displays how many recipients that emails were NOT sent to.
             for unsuccessful_recipient in self.unsuccessful_recipients: # Loops through each unsuccessful recipient.
                 print(f'\t- {unsuccessful_recipient}') # Displays the name and email address of the recipient that the email were NOT sent to.
+
+    def get_smtp_server_address(self):
+        '''Returns the SMTP Server Address for some common email domains.'''
+        if self.sender.endswith('gmail.com'): # Checks if the sender email address is a gmail address, and returns the SMTP server address for it to connect to.
+            return 'smtp.gmail.com'
+        elif self.sender.endswith('outlook.com'): # Checks if the sender email address is an outlook address, and returns the SMTP server address for it to connect to.
+            return 'smtp-mail.outlook.com'
+        elif self.sender.endswith('yahoo.com'): # Checks if the sender email address is a yahoo address, and returns the SMTP server address for it to connect to.
+            return 'smtp.mail.yahoo.com'
+        elif self.sender.endswith('zohomail.com'): # Checks if the sender email address is a zoho address, and returns the SMTP server address for it to connect to.
+            return 'smtp.zoho.com'
+        else:
+            while True:
+                smtp_server_address = input(f'\nEnter SMTP Server Address for {self.sender} to connect to: ') # Prompts the user to enter the SMTP Address for the email address, if it is not listed above.
+                if self.validate_smtp_server_address(smtp_server_address): # Checks if the SMTP Server Address is in the correct format, and returns it.
+                    return smtp_server_address
+                else:
+                    # Displays that the entered text is not in the correct format for an SMTP Server Address.
+                    print(f'{smtp_server_address} is not in the correct format for an SMTP Server Address.')
+
+    def validate_smtp_server_address(self, address):
+        '''
+        Validates that the SMTP Server Address is in the correct format.
+        Examples: smtp.gmail.com (GOOD)
+                  smtp.mail.yahoo.com (GOOD)
+                  smtp_mail_yahoo_com (BAD)
+        '''
+        pattern = r'^[a-z0-9]+[.][a-z0-9]+[.]?[a-z0-9]*$' # Search pattern for SMTP Server Address.
+        if re.search(pattern, address): # Checks if the SMTP Server Address is in the correct format and returns True.
+            return True
+
+
+
 
 
 

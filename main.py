@@ -3,8 +3,25 @@ import os # import os # For interacting with the operating system e.g. checking 
 import re  # For searching a string, using a regular expression pattern.
 import sys # For exiting the program.
 
-
 from emails import Emails # Class for composing and sending the emails.
+
+def validate_domain(domain):
+    '''
+    Validates that the email domain is in the correct format.
+    Examples: example.com (GOOD)
+              example1.example2.com (GOOD)
+              example (BAD)
+    '''
+    pattern = r'^[a-z0-9]+[.][a-z0-9]+[.]?[a-z0-9]*$' # Search pattern for email domain.
+    if re.search(pattern, domain): # Checks if the email domain is in the correct format, and returns it.
+        return domain
+    else:
+        # Displays that the domain is not in the correct format, and will terminate the program.
+        print(f'The email domain "{domain}" is not in the correct format.')
+        print('Please verify that the domain is in the correct format and run the program again.')
+        print('Program terminated.\n')
+        sys.exit() # Exits the program.
+
 
 def validate_email(email_address):
     '''
@@ -21,18 +38,19 @@ def validate_email(email_address):
 
 def get_sender_email(domain):
     '''Checks if the email address is a gmail address, and returns it.'''
+    domain_name = domain.split('.')[0] # Obtains the domain name from the email domain e.g. gmail, outlook, yahoo.
     while True:
-        email_address = input('\nEnter sender email address: ') # Prompts the user to enter the sender email address.
+        email_address = input(f'\nEnter sender {domain_name} email address: ') # Prompts the user to enter the sender email address.
 
         # Checks if the email is in the correct format and is a gmail addreses.
         if validate_email(email_address) and email_address.endswith(domain):
-            email_address_confirm = input('Confirm sender email address: ') # Prompts the user to re-enter the sender email address.
+            email_address_confirm = input(f'Confirm sender {domain_name} email address: ') # Prompts the user to re-enter the sender email address.
             if email_address == email_address_confirm: # Checks if both emails are the same and then return it.
                     return email_address
             else:
-                print('Email Addresses do not match.') # Displays a message if both email addresses are not the same.
+                print(f'"{email_address}" and "{email_address_confirm}" does not match.') # Displays a message if both input are not the same.
         else:
-            print(f'{email_address} is not a gmail address.') # Displays a message that the email address is not a gmail address.
+            print(f'{email_address} is not a/an {domain_name} address.') # Displays a message that the email address is not a gmail address.
            
 
 def get_recipients(filename):
@@ -93,7 +111,8 @@ def get_recipients(filename):
 
 
 if __name__ == '__main__':
-    sender = get_sender_email('gmail.com') # Obtains the sender's gmail address.
+    domain = validate_domain('gmail.com') # Email domain e.g. gmail.com, outlook.com, yahoo.com
+    sender = get_sender_email(domain) # Obtains the sender's gmail address.
 
     filename = 'email_list.csv' # Name of CSV file containing the recipients information.
     recipients = get_recipients(filename) # Returns a list of the recipients.
